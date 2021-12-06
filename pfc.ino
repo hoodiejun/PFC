@@ -1,6 +1,7 @@
 #include <LiquidCrystal.h>
-#define Current_Pin A0
+
 #define Voltage_Pin A0
+#define Current_Pin A1
 #define ZeroCrossing_pin 13
 #define Relay1_Pin 12
 #define Relay2_Pin 11
@@ -36,36 +37,22 @@ void loop()
     // Cos 함수가 라디안을 사용하므로 angle/57.2958로 변환시켜줌
     angle = ((((pulseIn(pin, HIGH)) * micro)* degree)* frequency);
     // pf = cos(angle / rads);
-    if (angle > angle_max) // Test if the angle is maximum angle
+    if (angle > angle_max) // 측정 각도가 최댓값 보다 크면
     {
       angle_max = angle; // 각도의 최댓값을 대입
       pf_max = cos(angle_max / rads); // "angle_max" 로 부터 역률을 계산
     }
   }
-  if (angle_max > 360) // If the calculation is higher than 360 do following...
+  if (angle_max > 360) // 각도 최댓값이 360 이상이면
   {
-    angle_max = 0; // assign the 0 to "angle_max"
-    pf_max = 1; // Assign the Unity PF to "pf_max"
+    angle_max = 0;
+    pf_max = 1;
   }
-  if (angle_max == 0) // If the calculation is higher than 360 do following...
+  if (angle_max == 0)
   {
-    angle_max = 0; // assign the 0 to "angle_max"
-    pf_max = 1; // Assign the Unity PF to "pf_max"
+    angle_max = 0;
+    pf_max = 1;
   }
-  Serial.print(angle_max, 2); // Print the result
-  Serial.print(",");
-  Serial.println(pf_max, 2);
-  // lcd.clear();
-  // lcd.setCursor(0,0);
-  // lcd.print("PF=");
-  // lcd.setCursor(4,0);
-  // lcd.print(pf_max);
-  // lcd.print(" ");
-  // lcd.setCursor(0,1);
-  // lcd.print("Ph-Shift=");
-  // lcd.setCursor(10,1);
-  // lcd.print(angle_max);
-  // lcd.print(" ");
 
   // 역률 0.98이하면 릴레이 ON 
   if(pf_max <= 0.98)
@@ -80,6 +67,27 @@ void loop()
     delay(100);
     capState1 = 1;
   }
+
+  // 시리얼 모니터 출력
+  Serial.print("위상차: ");
+  Serial.print(angle_max, 2);
+  Serial.print(",");
+  Serial.print("역률: ");
+  Serial.println(pf_max, 2);
+
+  // lcd 출력
+  // lcd.clear();
+  // lcd.setCursor(0,0);
+  // lcd.print("PF=");
+  // lcd.setCursor(4,0);
+  // lcd.print(pf_max);
+  // lcd.print(" ");
+  // lcd.setCursor(0,1);
+  // lcd.print("Ph-Shift=");
+  // lcd.setCursor(10,1);
+  // lcd.print(angle_max);
+  // lcd.print(" ");
+
   delay(200);
   angle = 0; // 다음 측정을 위해 각도 0으로 리셋
   angle_max = 0;
