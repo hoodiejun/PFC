@@ -1,24 +1,3 @@
-#include <FastIO.h>
-#include <I2CIO.h>
-#include <LCD.h>
-#include <LiquidCrystal.h>
-#include <LiquidCrystal_I2C.h>
-#include <LiquidCrystal_I2C_ByVac.h>
-#include <LiquidCrystal_SI2C.h>
-#include <LiquidCrystal_SR.h>
-#include <LiquidCrystal_SR1W.h>
-#include <LiquidCrystal_SR2W.h>
-#include <LiquidCrystal_SR3W.h>
-#include <SI2CIO.h>
-#include <SoftI2CMaster.h>
-
-#include <FilterDerivative.h>
-#include <FilterOnePole.h>
-#include <Filters.h>
-#include <FilterTwoPole.h>
-#include <FloatDefine.h>
-#include <RunningStatistics.h>
-
 /* This code works with ACS712 and LCD ic
  * It measure the TRMS of an Alternating Current and displays the value on the screen
  * Visit www.SurtrTech.com for more details
@@ -97,30 +76,3 @@ void loop() {
  * Then turn on the power to a known value, for example use a bulb or a led that ou know its power and you already know your voltage, so a little math you'll get the theoritical amps
  * you divide that theory value by the measured value and here you got the slope, now place them or modify them
  */
-
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-
-void setup()
-{
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("Hellow, world!");
-}
-
-
-void loop()
-{
-  for (int position = 0; position < 16; position++) {
-    lcd.scrollDisplayLeft();
-    delay(150);
-  }
-  for (int position = 0; position < 35; position++) {
-    lcd.scrollDisplayLeft();
-    delay(150);
-  }
-}

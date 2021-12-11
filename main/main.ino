@@ -1,15 +1,18 @@
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h> 
+#include <Filters.h>              //This library does a huge work check its .cpp file
 
-#define Voltage_Pin A0
-#define Current_Pin A1
-#define ZeroCrossing_Pin 13
-#define Relay1_Pin 12
-#define Relay2_Pin 11
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+#define Voltage_Pin A0 // ZMPT101b data pin
+#define Current_Pin A1 // ACS712 data pin
+#define ZeroCrossing_Pin 13 // Zero Crossing data pin
+#define Relay1_Pin 12 // Relay switch 1
+#define Relay2_Pin 11 // Relay switch 2
+
 float rads = 57.29577951; // 1 radian
 float degree = 360;
-float frequency = 10;
+float frequency = 60;
 float micro = 1 * pow (10,-6); // Multiplication factor to convert micro seconds into seconds
 
 float pf;
@@ -20,6 +23,11 @@ int ctr;
 int capState1 = 0;
 int capState2 = 0;
 
+float Amps_TRMS; 
+float ACS_Value;
+unsigned long printPeriod = 1000; 
+unsigned long previousMillis = 0;
+
 void setup()
 {
   pinMode(ZeroCrossing_Pin, INPUT);
@@ -28,16 +36,19 @@ void setup()
   digitalWrite(Relay1_Pin,LOW);
   digitalWrite(Relay2_Pin,LOW);
   Serial.begin(9600);
-  lcd.begin(16, 2);
+  Serial.println("Serial started");
+  inputStats.setWindowSecs( windowLength );
+  lcd.begin(16, 2);  // 16행(0~15) 2열(0~1) LCD 표시
+  lcd.backlight(); // 백라이트 ON
+  lcd.home ();
 }
 
 void loop()
 {
-  for (ctr = 0; ctr <= 10; ctr++) // 4번 측정 수행하고 리셋
+  for (ctr = 0; ctr <= 2; ctr++) // 4번 측정 수행하고 리셋
   {
-    // 1st line calculates the phase angle in degrees from differentiated time pulse
     // Cos 함수가 라디안을 사용하므로 angle/57.2958로 변환시켜줌
-    angle = (((pulseIn(ZeroCrossing_Pin, HIGH)) * micro)* degree);
+    angle = ((((pulseIn(ZeroCrossing_Pin, HIGH)) * micro)* degree)* frequency); // 차별화된 시간 펄스로부터 각도로 위상각을 계산한다
     // pf = cos(angle / rads);
     if (angle > angle_max) // 측정 각도가 최댓값 보다 크면
     {
@@ -56,14 +67,17 @@ void loop()
     pf_max = 1;
   }
 
-  // 역률 0.98이하면 릴레이 ON 
+  ReadVoltage();
+  ReadCurrent();
+
+  // 역률 0.95이하면 릴레이 ON 
   if(pf_max <= 0.95 && capState1 == 0)
   {
     digitalWrite(Relay1_Pin,LOW);
     delay(100);
     capState1 = 1;
   }
-  else if(pf_max <= 0.98 && capState1 == 1 && capState2 ==0)
+  else if(pf_max <= 0.95 && capState1 == 1 && capState2 ==0)
   {
     digitalWrite(Relay2_Pin,LOW);
     delay(100);
@@ -78,19 +92,42 @@ void loop()
   Serial.println(pf_max, 2);
 
   // lcd 출력
-  // lcd.clear();
-  // lcd.setCursor(0,0);
-  // lcd.print("PF=");
-  // lcd.setCursor(4,0);
-  // lcd.print(pf_max);
-  // lcd.print(" ");
-  // lcd.setCursor(0,1);
-  // lcd.print("Ph-Shift=");
-  // lcd.setCursor(10,1);
-  // lcd.print(angle_max);
-  // lcd.print(" ");
+  lcd.setCursor(0, 0); // 1행 1열부터 시작
+  lcd.print("pf=");
+  lcd.print(pf);
+  lcd.setCursor(7, 0);
+  lcd.print("P=");
+  // lcd.print(power);
+  lcd.setCursor(13,0);
+  lcd.print("kW");
+  lcd.setCursor(0, 1);
+  lcd.print("Q=");
+  lcd.setCursor(5,1);
+  lcd.print("kVAR");
 
   delay(2000);
   angle = 0; // 다음 측정을 위해 각도 0으로 리셋
   angle_max = 0;
+}
+
+float ReadCurrent(){
+  float windowLength = 40.0/frequency; // how long to average the signal, for statistist
+  float intercept = 0; // to be adjusted based on calibration testing
+  float slope = 0.0752; // to be adjusted based on calibration testing
+  
+  RunningStatistics inputStats; // create statistics to look at the raw test signal
+  inputStats.setWindowSecs( windowLength );
+   
+  ACS_Value = analogRead(Current_Pin); // read the analog in value:
+  inputStats.input(ACS_Value); // log to Stats function
+      
+  if((unsigned long)(millis() - previousMillis) >= printPeriod) { //every second we do the calculation
+    previousMillis = millis(); // update time
+    
+    Amps_TRMS = intercept + slope * inputStats.sigma();  //Calibrate the values
+    lcd.clear(); //clear the lcd and print in a certain position
+    lcd.setCursor(2,0);
+    lcd.print(Amps_TRMS);
+    lcd.print(" A");
+  }
 }
