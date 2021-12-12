@@ -131,3 +131,42 @@ float ReadCurrent(){
     lcd.print(" A");
   }
 }
+
+float windowLength = 100/frequency; // how long to average the signal, for statistist, changing this can have drastic effect
+int RawValue = 0;     
+float Volts_TRMS; // estimated actual voltage in Volts
+
+float intercept = 0; // to be adjusted based on calibration testin
+float slope = 1;      
+
+unsigned long printPeriod = 1000; //Measuring frequency, every 1s, can be changed
+unsigned long previousMillis = 0;
+
+RunningStatistics inputStats; //This class collects the value so we can apply some functions
+
+void setup() {
+  Serial.begin(115200);    // start the serial port
+  Serial.println("Serial started");
+  inputStats.setWindowSecs( windowLength );
+}
+
+float ReadVoltage(){
+    RawValue = analogRead(Voltage_Pin);  // read the analog in value:
+    inputStats.input(RawValue);       // log to Stats function
+        
+    if((unsigned long)(millis() - previousMillis) >= printPeriod) { //We calculate and display every 1s
+      previousMillis = millis();   // update time
+      
+      Volts_TRMS = inputStats.sigma()* slope + intercept;
+//      Volts_TRMS = Volts_TRMS*0.979;              //Further calibration if needed
+      
+      Serial.print("Non Calibrated: ");
+      Serial.print("\t");
+      Serial.print(inputStats.sigma()); 
+      Serial.print("\t");
+      Serial.print("Calibrated: ");
+      Serial.print("\t");
+      Serial.println(Volts_TRMS, 2);
+    
+  }
+}
