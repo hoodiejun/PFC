@@ -20,6 +20,7 @@ float micro = 1 * pow (10,-6); // 마이크로 초로 변환
 float angle = 0;
 float pf_max = 0;
 float angle_max = 0;
+float total_pf = 0;
 int ctr = 0;
 int capState1 = 0;
 int capState2 = 0;
@@ -43,7 +44,7 @@ void setup()
 
 void loop()
 {
-  for (ctr = 0; ctr <= 5; ctr++) // 5번 측정 수행하고 리셋
+  for (ctr = 0; ctr <= 4; ctr++) // 5번 측정 수행하고 리셋
   {
     // Cos 함수가 라디안을 사용하므로 angle/57.2958로 변환시켜줌
     angle = ((((pulseIn(ZeroCrossing_Pin, HIGH)) * micro)* degree)* frequency); // 차별화된 시간 펄스로부터 각도로 위상각을 계산한다
@@ -51,6 +52,7 @@ void loop()
     {
       angle_max = angle; // 각도의 최댓값을 대입
       pf_max = cos(angle_max / rads); // "angle_max" 로 부터 역률을 계산
+      total_pf = total_pf + pf_max;
     }
   }
   if (angle_max > 360) // 각도 최댓값이 360 이상이면
@@ -63,6 +65,8 @@ void loop()
     angle_max = 0;
     pf_max = 1;
   }
+  angle_max = total_pf / ctr;
+  
   // 시리얼 모니터 출력
   Serial.print("위상차: ");
   Serial.print(angle_max, 2);
@@ -70,12 +74,12 @@ void loop()
   Serial.print("역률: ");
   Serial.println(pf_max, 2);
   
-  float U = voltageSensor.getVoltageAC(60);
-  if(U >= 20)
+  float U = voltageSensor.getVoltageAC();
+  if(U < 150)
   {
-    U = U * 5.15;
+    U = 0.05;
   }
-  float I = currentSensor.getCurrentAC(60);
+  float I = currentSensor.getCurrentAC();
   float P = U * I;
 
   Serial.println(String("V = ") + U + " V");
@@ -146,4 +150,5 @@ void loop()
   delay(500);
   angle = 0; // 다음 측정을 위해 각도 0으로 리셋
   angle_max = 0;
+  total_pf = 0;
 }
