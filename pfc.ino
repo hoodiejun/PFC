@@ -1,9 +1,8 @@
 #include <LiquidCrystal.h>
-LiquidCrystal lcd(12, 11, 7, 6, 3, 2);
 int pin = 13;
 float rads = 57.29577951; // 1 radian = approx 57 deg.
 float degree = 360;
-float frequency = 50;
+float frequency = 60;
 float nano = 1 * pow (10,-6); // Multiplication factor to convert micro seconds into seconds
 
 // Define floats to contain calculations
@@ -15,14 +14,13 @@ float angle_max = 0;
 int ctr;
 int capState1 = 0;
 int capState2 = 0;
-int Relaypin1 = 5;
-int Relaypin2 = 4;
+int Relaypin1 = 12;
+int Relaypin2 =11;
 
 void setup()
 {
  pinMode(pin, INPUT);
  Serial.begin(9600);
- lcd.begin(16, 2);
  pinMode(Relaypin1, OUTPUT);
  pinMode(Relaypin2, OUTPUT);
 }
@@ -56,40 +54,13 @@ for (ctr = 0; ctr <= 4; ctr++) // Perform 4 measurements then reset
    Serial.print(angle_max, 2); // Print the result
    Serial.print(",");
    Serial.println(pf_max, 2);
-   lcd.clear();
-   lcd.setCursor(0,0);
-   lcd.print("PF=");
-   lcd.setCursor(4,0);
-   lcd.print(pf_max);
-   lcd.print(" ");
-   lcd.setCursor(0,1);
-   lcd.print("Ph-Shift=");
-   lcd.setCursor(10,1);
-   lcd.print(angle_max);
-   lcd.print(" ");
 
    if(pf_max <= 0.98)
    {
-    if(capState1 == 1 and capState2 == 0)
-    {
-       digitalWrite(Relaypin2,HIGH);
-       delay(200);
-       capState2 = 1;
-    }
     digitalWrite(Relaypin1,HIGH);
     delay(200);
     capState1 = 1;
    }
-   /*
-   else
-   {
-    digitalWrite(Relaypin1,LOW);
-    digitalWrite(Relaypin2,LOW);
-    delay(100);
-    capState1 = 0;
-    capState2 = 0;
-   }
-   */
    delay(500);
    angle = 0; // Reset variables for next test
    angle_max = 0;
