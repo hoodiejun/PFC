@@ -45,51 +45,10 @@ void setup()
 
 void loop()
 {
-  for (ctr = 0; ctr <= 2; ctr++) // 4번 측정 수행하고 리셋
-  {
-    // Cos 함수가 라디안을 사용하므로 angle/57.2958로 변환시켜줌
-    angle = ((((pulseIn(ZeroCrossing_Pin, HIGH)) * micro)* degree)* frequency); // 차별화된 시간 펄스로부터 각도로 위상각을 계산한다
-    // pf = cos(angle / rads);
-    if (angle > angle_max) // 측정 각도가 최댓값 보다 크면
-    {
-      angle_max = angle; // 각도의 최댓값을 대입
-      pf_max = cos(angle_max / rads); // "angle_max" 로 부터 역률을 계산
-    }
-  }
-  if (angle_max > 360) // 각도 최댓값이 360 이상이면
-  {
-    angle_max = 0;
-    pf_max = 1;
-  }
-  if (angle_max == 0)
-  {
-    angle_max = 0;
-    pf_max = 1;
-  }
-
   ReadVoltage();
   ReadCurrent();
-
-  // 역률 0.95이하면 릴레이 ON 
-  if(pf_max <= 0.95 && capState1 == 0)
-  {
-    digitalWrite(Relay1_Pin,LOW);
-    delay(100);
-    capState1 = 1;
-  }
-  else if(pf_max <= 0.95 && capState1 == 1 && capState2 ==0)
-  {
-    digitalWrite(Relay2_Pin,LOW);
-    delay(100);
-    capState2 = 1;
-  }
-
-  // 시리얼 모니터 출력
-  Serial.print("위상차: ");
-  Serial.print(angle_max, 2);
-  Serial.print(",");
-  Serial.print("역률: ");
-  Serial.println(pf_max, 2);
+  CalcPF();
+  ControlRelay();
 
   // lcd 출력
   lcd.setCursor(0, 0); // 1행 1열부터 시작
@@ -97,11 +56,12 @@ void loop()
   lcd.print(pf);
   lcd.setCursor(7, 0);
   lcd.print("P=");
-  // lcd.print(power);
+  lcd.print(Volts_TRMS*Amps_TRMS);
   lcd.setCursor(13,0);
   lcd.print("kW");
   lcd.setCursor(0, 1);
   lcd.print("Q=");
+  lcd.print(Volts_TRMS*Amps_TRMS*sin(angle_max));
   lcd.setCursor(5,1);
   lcd.print("kVAR");
 
@@ -110,7 +70,8 @@ void loop()
   angle_max = 0;
 }
 
-float ReadCurrent(){
+float ReadCurrent()
+{
   float windowLength = 40.0/frequency; // how long to average the signal, for statistist
   float intercept = 0; // to be adjusted based on calibration testing
   float slope = 0.0752; // to be adjusted based on calibration testing
@@ -150,7 +111,8 @@ void setup() {
   inputStats.setWindowSecs( windowLength );
 }
 
-float ReadVoltage(){
+float ReadVoltage()
+{
     RawValue = analogRead(Voltage_Pin);  // read the analog in value:
     inputStats.input(RawValue);       // log to Stats function
         
@@ -168,5 +130,53 @@ float ReadVoltage(){
       Serial.print("\t");
       Serial.println(Volts_TRMS, 2);
     
+  }
+}
+
+float CalcPF()
+{
+  for (ctr = 0; ctr <= 2; ctr++) // 4번 측정 수행하고 리셋
+  {
+    // Cos 함수가 라디안을 사용하므로 angle/57.2958로 변환시켜줌
+    angle = ((((pulseIn(ZeroCrossing_Pin, HIGH)) * micro)* degree)* frequency); // 차별화된 시간 펄스로부터 각도로 위상각을 계산한다
+    // pf = cos(angle / rads);
+    if (angle > angle_max) // 측정 각도가 최댓값 보다 크면
+    {
+      angle_max = angle; // 각도의 최댓값을 대입
+      pf_max = cos(angle_max / rads); // "angle_max" 로 부터 역률을 계산
+    }
+  }
+  if (angle_max > 360) // 각도 최댓값이 360 이상이면
+  {
+    angle_max = 0;
+    pf_max = 1;
+  }
+  if (angle_max == 0)
+  {
+    angle_max = 0;
+    pf_max = 1;
+  }
+  // 시리얼 모니터 출력
+  Serial.print("위상차: ");
+  Serial.print(angle_max, 2);
+  Serial.print(",");
+  Serial.print("역률: ");
+  Serial.println(pf_max, 2);
+}
+
+float ControlRelay()
+{
+  // 역률 0.95이하면 릴레이 ON 
+  if(pf_max <= 0.95 && capState1 == 0)
+  {
+    digitalWrite(Relay1_Pin,LOW);
+    delay(100);
+    capState1 = 1;
+  }
+  else if(pf_max <= 0.95 && capState1 == 1 && capState2 ==0)
+  {
+    digitalWrite(Relay2_Pin,LOW);
+    delay(100);
+    capState2 = 1;
   }
 }
