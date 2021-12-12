@@ -30,7 +30,7 @@ void setup()
 void loop()
 {
  
-for (ctr = 0; ctr <= 10; ctr++) // Perform 4 measurements then reset
+for (ctr = 0; ctr <= 7; ctr++) // Perform 4 measurements then reset
   {
   // 1st line calculates the phase angle in degrees from differentiated time pulse
   // Function COS uses radians not Degree's hence conversion made by dividing angle / 57.2958
@@ -53,15 +53,25 @@ for (ctr = 0; ctr <= 10; ctr++) // Perform 4 measurements then reset
     angle_max = 0; // assign the 0 to "angle_max"
     pf_max = 1; // Assign the Unity PF to "pf_max"
    }
+   Serial.print("위상차: ");
    Serial.print(angle_max, 2); // Print the result
    Serial.print(",");
+   Serial.print("역률: ");
    Serial.println(pf_max, 2);
 
-   if(0 <= pf_max && pf_max <= 0.95)
+   if(0 <= pf_max && pf_max <= 0.95 && capState1 == 0)
    {
-    digitalWrite(Relaypin1,HIGH);
+    digitalWrite(Relaypin1,LOW);
+    Serial.println("1번째 스위치 ON");
     delay(200);
     capState1 = 1;
+   }
+   else if(pf_max <= 0.95 && capState1 == 1 && capState2 == 0)
+   {
+    digitalWrite(Relaypin2,LOW);
+    Serial.println("2번째 스위치 ON");
+    capState2 = 2;
+    delay(200);
    }
    delay(1000);
    angle = 0; // Reset variables for next test
