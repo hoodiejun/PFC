@@ -30,7 +30,7 @@ void setup()
 void loop()
 {
  
-for (ctr = 0; ctr <= 3; ctr++) // Perform 4 measurements then reset
+for (ctr = 0; ctr <= 10; ctr++) // Perform 4 measurements then reset
   {
   // 1st line calculates the phase angle in degrees from differentiated time pulse
   // Function COS uses radians not Degree's hence conversion made by dividing angle / 57.2958
@@ -63,7 +63,7 @@ for (ctr = 0; ctr <= 3; ctr++) // Perform 4 measurements then reset
     delay(200);
     capState1 = 1;
    }
-   delay(500);
+   delay(1000);
    angle = 0; // Reset variables for next test
    angle_max = 0;
 }
