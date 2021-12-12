@@ -1,141 +1,113 @@
+#include <ACS712.h>
+#include <ZMPT101B.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h> 
-#include <Filters.h>              //This library does a huge work check its .cpp file
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-#define Voltage_Pin A0 // ZMPT101b data pin
-#define Current_Pin A1 // ACS712 data pin
-#define ZeroCrossing_Pin 13 // Zero Crossing data pin
-#define Relay1_Pin 12 // Relay switch 1
-#define Relay2_Pin 11 // Relay switch 2
+#define ZeroCrossing_Pin 13
+#define Relay1_Pin 12
+#define Relay2_Pin 11
 
-float rads = 57.29577951; // 1 radian
+ZMPT101B voltageSensor(A0);
+ACS712 currentSensor(ACS712_05B, A1);
+
+float rads = 57.29577951; // 1라디안
 float degree = 360;
 float frequency = 60;
-float micro = 1 * pow (10,-6); // Multiplication factor to convert micro seconds into seconds
+float micro = 1 * pow (10,-6); // 마이크로 초로 변환
 
-float pf;
-float angle;
+float pf = 0;
+float angle = 0;
 float pf_max = 0;
 float angle_max = 0;
-int ctr;
+int ctr = 0;
 int capState1 = 0;
 int capState2 = 0;
-
-float Amps_TRMS; 
-float ACS_Value;
-unsigned long printPeriod = 1000; 
-unsigned long previousMillis = 0;
 
 void setup()
 {
   pinMode(ZeroCrossing_Pin, INPUT);
   pinMode(Relay1_Pin, OUTPUT);
   pinMode(Relay2_Pin, OUTPUT);
-  digitalWrite(Relay1_Pin,LOW);
-  digitalWrite(Relay2_Pin,LOW);
   Serial.begin(9600);
   Serial.println("Serial started");
-  inputStats.setWindowSecs( windowLength );
+  voltageSensor.calibrate();
+  currentSensor.calibrate();
+  Serial.println("Done!");
   lcd.begin(16, 2);  // 16행(0~15) 2열(0~1) LCD 표시
   lcd.backlight(); // 백라이트 ON
   lcd.home ();
+  digitalWrite(Relay1_Pin,LOW);
+  digitalWrite(Relay2_Pin,LOW);
 }
 
 void loop()
 {
-  ReadVoltage();
-  ReadCurrent();
   CalcPF();
+  
+  float U = voltageSensor.getVoltageAC(60);
+  float I = currentSensor.getCurrentAC(60);
+  float P = U * I;
+
+  Serial.println(String("V = ") + U + " V");
+  Serial.println(String("I = ") + I + " A");
+  Serial.println(String("P = ") + P + " W");
+  delay(1000);
+
   ControlRelay();
 
-  // lcd 출력
-  lcd.setCursor(0, 0); // 1행 1열부터 시작
-  lcd.print("pf=");
-  lcd.print(pf);
-  lcd.setCursor(7, 0);
+  // 역률, 유효전력, 무효전력 출력
+  lcd.clear();
+  lcd.setCursor(0,0); // 1행 1열부터 시작
+  lcd.print("PF=");
+  lcd.print(pf_max);
+  lcd.setCursor(9,0);
   lcd.print("P=");
-  lcd.print(Volts_TRMS*Amps_TRMS);
-  lcd.setCursor(13,0);
-  lcd.print("kW");
-  lcd.setCursor(0, 1);
-  lcd.print("Q=");
-  lcd.print(Volts_TRMS*Amps_TRMS*sin(angle_max));
-  lcd.setCursor(5,1);
-  lcd.print("kVAR");
+  lcd.print(P);
+  lcd.setCursor(0,1);
+  lcd.print("V=");
+  lcd.print(U);
+  lcd.setCursor(9,1);
+  lcd.print("I=");
+  lcd.print(I);
+  delay(3000);
+  lcd.clear();
 
-  delay(2000);
+  // 전압, 전류, 스위치 상태 출력
+  if(capState1 == 0)
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("Relay1:");
+    lcd.print("OFF");
+  }
+  else if(capState1 == 1)
+  {
+    lcd.setCursor(0,0);
+    lcd.print("Relay1:");
+    lcd.print("ON");
+  }
+  if(capState2 == 0)
+  {
+    lcd.setCursor(0,1);
+    lcd.print("Relay2:");
+    lcd.print("OFF");
+  }
+  else if(capState2 == 1)
+  {
+    lcd.setCursor(0,1);
+    lcd.print("Relay2:");
+    lcd.print("ON");
+  }
+
+  delay(500);
   angle = 0; // 다음 측정을 위해 각도 0으로 리셋
   angle_max = 0;
 }
 
-float ReadCurrent()
-{
-  float windowLength = 40.0/frequency; // how long to average the signal, for statistist
-  float intercept = 0; // to be adjusted based on calibration testing
-  float slope = 0.0752; // to be adjusted based on calibration testing
-  
-  RunningStatistics inputStats; // create statistics to look at the raw test signal
-  inputStats.setWindowSecs( windowLength );
-   
-  ACS_Value = analogRead(Current_Pin); // read the analog in value:
-  inputStats.input(ACS_Value); // log to Stats function
-      
-  if((unsigned long)(millis() - previousMillis) >= printPeriod) { //every second we do the calculation
-    previousMillis = millis(); // update time
-    
-    Amps_TRMS = intercept + slope * inputStats.sigma();  //Calibrate the values
-    lcd.clear(); //clear the lcd and print in a certain position
-    lcd.setCursor(2,0);
-    lcd.print(Amps_TRMS);
-    lcd.print(" A");
-  }
-}
-
-float windowLength = 100/frequency; // how long to average the signal, for statistist, changing this can have drastic effect
-int RawValue = 0;     
-float Volts_TRMS; // estimated actual voltage in Volts
-
-float intercept = 0; // to be adjusted based on calibration testin
-float slope = 1;      
-
-unsigned long printPeriod = 1000; //Measuring frequency, every 1s, can be changed
-unsigned long previousMillis = 0;
-
-RunningStatistics inputStats; //This class collects the value so we can apply some functions
-
-void setup() {
-  Serial.begin(115200);    // start the serial port
-  Serial.println("Serial started");
-  inputStats.setWindowSecs( windowLength );
-}
-
-float ReadVoltage()
-{
-    RawValue = analogRead(Voltage_Pin);  // read the analog in value:
-    inputStats.input(RawValue);       // log to Stats function
-        
-    if((unsigned long)(millis() - previousMillis) >= printPeriod) { //We calculate and display every 1s
-      previousMillis = millis();   // update time
-      
-      Volts_TRMS = inputStats.sigma()* slope + intercept;
-//      Volts_TRMS = Volts_TRMS*0.979;              //Further calibration if needed
-      
-      Serial.print("Non Calibrated: ");
-      Serial.print("\t");
-      Serial.print(inputStats.sigma()); 
-      Serial.print("\t");
-      Serial.print("Calibrated: ");
-      Serial.print("\t");
-      Serial.println(Volts_TRMS, 2);
-    
-  }
-}
-
 float CalcPF()
 {
-  for (ctr = 0; ctr <= 2; ctr++) // 4번 측정 수행하고 리셋
+  for (ctr = 0; ctr <= 5; ctr++) // 5번 측정 수행하고 리셋
   {
     // Cos 함수가 라디안을 사용하므로 angle/57.2958로 변환시켜줌
     angle = ((((pulseIn(ZeroCrossing_Pin, HIGH)) * micro)* degree)* frequency); // 차별화된 시간 펄스로부터 각도로 위상각을 계산한다
@@ -169,13 +141,16 @@ float ControlRelay()
   // 역률 0.95이하면 릴레이 ON 
   if(pf_max <= 0.95 && capState1 == 0)
   {
-    digitalWrite(Relay1_Pin,LOW);
+    digitalWrite(Relay1_Pin,HIGH);
+    Serial.print("릴레이 스위치 ON");
     delay(100);
     capState1 = 1;
   }
+  // 첫 번째 스위치 ON 후 역률 0.95 이하면 두 번째 스위치 ON
   else if(pf_max <= 0.95 && capState1 == 1 && capState2 ==0)
   {
-    digitalWrite(Relay2_Pin,LOW);
+    digitalWrite(Relay2_Pin,HIGH);
+    Serial.print("릴레이 스위치 ON");
     delay(100);
     capState2 = 1;
   }
