@@ -23,12 +23,14 @@ void setup()
  Serial.begin(9600);
  pinMode(Relaypin1, OUTPUT);
  pinMode(Relaypin2, OUTPUT);
+ digitalWrite(Relaypin1,LOW);
+ digitalWrite(Relaypin2,LOW);
 }
 
 void loop()
 {
  
-for (ctr = 0; ctr <= 4; ctr++) // Perform 4 measurements then reset
+for (ctr = 0; ctr <= 3; ctr++) // Perform 4 measurements then reset
   {
   // 1st line calculates the phase angle in degrees from differentiated time pulse
   // Function COS uses radians not Degree's hence conversion made by dividing angle / 57.2958
@@ -55,7 +57,7 @@ for (ctr = 0; ctr <= 4; ctr++) // Perform 4 measurements then reset
    Serial.print(",");
    Serial.println(pf_max, 2);
 
-   if(pf_max <= 0.98)
+   if(0 <= pf_max && pf_max <= 0.95)
    {
     digitalWrite(Relaypin1,HIGH);
     delay(200);
