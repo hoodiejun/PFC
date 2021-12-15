@@ -1,5 +1,4 @@
 #include <ACS712.h>
-#include <ZMPT101B.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h> 
 
@@ -9,7 +8,6 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define Relay1_Pin 12
 #define Relay2_Pin 11
 
-ZMPT101B voltageSensor(A0);
 ACS712 currentSensor(ACS712_05B, A1);
 
 float rads = 57.29577951; // 1라디안
@@ -31,7 +29,6 @@ void setup()
   pinMode(Relay2_Pin, OUTPUT);
   Serial.begin(9600);
   Serial.println("Serial started");
-  voltageSensor.calibrate();
   currentSensor.calibrate();
   Serial.println("Done!");
   lcd.begin(16, 2);  // 16행(0~15) 2열(0~1) LCD 표시
@@ -71,7 +68,7 @@ void loop()
   Serial.print("역률: ");
   Serial.println(pf_max, 2);
   
-  float U = voltageSensor.getVoltageAC();
+  float U = ReadVoltage();
   float I = currentSensor.getCurrentAC();
   float P = U * I;
 
@@ -83,7 +80,7 @@ void loop()
   // 역률 0.95이하면 릴레이 ON 
   if(0 <= pf_max && pf_max <= 0.95 && capState1 == 0)
   {
-    digitalWrite(Relay1_Pin,HIGH);
+    digitalWrite(Relay2_Pin,HIGH);
     Serial.println("릴레이 스위치1 ON");
     delay(100);
     capState1 = 1;
@@ -91,7 +88,7 @@ void loop()
   // 첫 번째 스위치 ON 후 역률 0.95 이하면 두 번째 스위치 ON
   else if(0 <= pf_max && pf_max <= 0.95 && capState1 == 1 && capState2 ==0)
   {
-    digitalWrite(Relay2_Pin,HIGH);
+    digitalWrite(Relay1_Pin,HIGH);
     Serial.println("릴레이 스위치2 ON");
     delay(100);
     capState2 = 1;
@@ -111,7 +108,7 @@ void loop()
   lcd.setCursor(9,1);
   lcd.print("I=");
   lcd.print(I);
-  delay(3000);
+  delay(2000);
   lcd.clear();
 
   // 전압, 전류, 스위치 상태 출력
@@ -143,4 +140,17 @@ void loop()
   delay(500);
   angle = 0; // 다음 측정을 위해 각도 0으로 리셋
   angle_max = 0;
+}
+
+float ReadVoltage()
+{
+const int analogIn = A0;              
+float sensor_Value = 0;              
+float v_Out;                         
+        
+sensor_Value = analogRead (A0);     // read the analog in value:
+v_Out = 250 * (sensor_Value / 1024)*sqrt(3);
+return v_Out;
+
+delay (1000);
 }

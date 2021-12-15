@@ -1,9 +1,6 @@
 #include <LiquidCrystal_I2C.h>
-#include <Wire.h> 
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-int pin = 13;
+int pin = 8;
 float rads = 57.29577951; // 1 radian = approx 57 deg.
 float degree = 360;
 float frequency = 60;
@@ -27,18 +24,15 @@ void setup()
   pinMode(Relaypin2, OUTPUT);
   digitalWrite(Relaypin1,LOW);
   digitalWrite(Relaypin2,LOW);
-  lcd.begin(16, 2);  // 16행(0~15) 2열(0~1) LCD 표시
-  lcd.backlight(); // 백라이트 ON
-  lcd.home ();
 }
 
 void loop()
 {
-  for (ctr = 0; ctr <= 7; ctr++) // Perform 4 measurements then reset
+  for (ctr = 0; ctr <= 4; ctr++) // Perform 4 measurements then reset
   {
     // 1st line calculates the phase angle in degrees from differentiated time pulse
     // Function COS uses radians not Degree's hence conversion made by dividing angle / 57.2958
-    angle = ((((pulseIn(pin, HIGH)) * nano)* degree)* frequency);
+    angle = ((((pulseIn(pin, HIGH)) * nano)* degree)* frequency)-180;
     // pf = cos(angle / rads);
     
     if (angle > angle_max) // Test if the angle is maximum angle
@@ -65,23 +59,19 @@ void loop()
   
   if(0 <= pf_max && pf_max <= 0.95 && capState1 == 0)
   {
-    digitalWrite(Relaypin1,HIGH);
-    Serial.println("1번째 스위치 ON");
-    delay(200);
+    digitalWrite(Relaypin1,LOW);
+    Serial.println("1번째 스위치 LOW");
+    delay(100);
     capState1 = 1;
   }
   else if(pf_max <= 0.95 && capState1 == 1 && capState2 == 0)
   {
-    digitalWrite(Relaypin2,HIGH);
-    Serial.println("2번째 스위치 ON");
+    digitalWrite(Relaypin2,LOW);
+    Serial.println("2번째 스위치 OFF");
     capState2 = 2;
-    delay(200);
+    delay(100);
   }
-  lcd.clear();
-  lcd.setCursor(0,0); // 1행 1열부터 시작
-  lcd.print("PF=");
-  lcd.print(pf_max);
-  delay(1000);
+  delay(500);
   angle = 0; // Reset variables for next test
   angle_max = 0;
 }
